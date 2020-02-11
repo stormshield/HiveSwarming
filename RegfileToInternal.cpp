@@ -89,15 +89,20 @@ static HRESULT ValueListToInternal
                 {
                     break;
                 }
+                if (ClosingQuotePos + 1 >= ValueList.length())
+                {
+                    ReportError(E_UNEXPECTED, L"Buffer too short for value name");
+                    return E_UNEXPECTED;
+                }
                 if (ValueList[ClosingQuotePos] == L'\\')
                 {
-                    if (ClosingQuotePos + 1 >= ValueList.length())
-                    {
-                        ReportError(E_UNEXPECTED, L"Backslash at end of buffer");
-                        return E_UNEXPECTED;
-                    }
                     ValueNameStream << ValueList[ClosingQuotePos + 1];
                     ClosingQuotePos += 2;
+                }
+                else if (ValueList[ClosingQuotePos] == L'\r' && ValueList[ClosingQuotePos + 1] == L'\n')
+                {
+                    // ignore \r before \n
+                    ClosingQuotePos += 1;
                 }
                 else
                 {
@@ -287,17 +292,22 @@ static HRESULT ValueListToInternal
                 {
                     break;
                 }
+                if (ClosingQuotePos + 1 >= ValueList.length())
+                {
+                    std::wostringstream ErrorMessageStream;
+                    ErrorMessageStream << L"Value name " << Value.Name << L" - Buffer too short, maybe missing newline after closing quotation mark";
+                    ReportError(E_UNEXPECTED, ErrorMessageStream.str());
+                    return E_UNEXPECTED;
+                }
                 if (ValueList[ClosingQuotePos] == L'\\')
                 {
-                    if (ClosingQuotePos + 1 >= ValueList.length())
-                    {
-                        std::wostringstream ErrorMessageStream;
-                        ErrorMessageStream << L"Value name " << Value.Name << L" - End of data after escape character";
-                        ReportError(E_UNEXPECTED, ErrorMessageStream.str());
-                        return E_UNEXPECTED;
-                    }
                     ValueString << ValueList[ClosingQuotePos + 1];
                     ClosingQuotePos += 2;
+                }
+                else if (ValueList[ClosingQuotePos] == L'\r' && ValueList[ClosingQuotePos + 1] == L'\n')
+                {
+                    // ignore \r before \n
+                    ClosingQuotePos += 1;
                 }
                 else
                 {
