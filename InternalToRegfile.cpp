@@ -8,24 +8,6 @@
 #include <sstream>
 #include <iomanip>
 
-/// @brief Perform global replacement of substring in a std::wstring
-/// @param[in,out] String String on which to perform substitutions
-/// @param[in] Pattern Substring that will be replaced by #Replacement in #String
-/// @param[in] Replacement What is inserted in place of #Substring in #String
-static VOID GlobalStringSubstitute(
-    _Inout_ std::wstring& String,
-    _In_ const std::wstring& Pattern,
-    _In_ const std::wstring& Replacement
-)
-{
-    size_t Position = String.find(Pattern);
-    while (Position != String.npos)
-    {
-        String.replace(Position, Pattern.length(), Replacement);
-        Position = String.find(Pattern, Position + Replacement.length());
-    }
-}
-
 /// @brief Append binary contents of a std::wstring to an opened file
 /// @param[in] OutFileHandle Handle to the file
 /// @param[in] String Input string
@@ -316,9 +298,12 @@ HRESULT RenderRegistryKey
         NewPath = PathSoFar + Constants::RegFiles::PathSeparator + RegKey.Name;
     }
 
+    std::wstring EscapedPath { NewPath };
+    GlobalStringSubstitute(EscapedPath, L"\n", L"\r\n");
+
     {
         std::wostringstream KeySpecStream;
-        KeySpecStream << Constants::RegFiles::KeyOpening << NewPath << Constants::RegFiles::KeyClosing << Constants::RegFiles::NewLines;
+        KeySpecStream << Constants::RegFiles::KeyOpening << EscapedPath << Constants::RegFiles::KeyClosing << Constants::RegFiles::NewLines;
 
         Result = WriteStringBufferToFile(OutFileHandle, KeySpecStream.str());
         if (FAILED(Result))

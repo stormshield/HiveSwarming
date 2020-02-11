@@ -58,3 +58,17 @@ void ReportError
 
     std::wcerr << std::endl << std::endl;
 }
+
+VOID GlobalStringSubstitute(
+    _Inout_ std::wstring& String,
+    _In_ const std::wstring& Pattern,
+    _In_ const std::wstring& Replacement
+)
+{
+    size_t Position = String.find(Pattern);
+    while (Position != String.npos)
+    {
+        String.replace(Position, Pattern.length(), Replacement);
+        Position = String.find(Pattern, Position + Replacement.length());
+    }
+}

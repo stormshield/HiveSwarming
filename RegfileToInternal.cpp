@@ -386,8 +386,10 @@ static HRESULT RegListToInternal
             break;
         }
         const std::wstring_view KeyName{ &KeyPath[PathPrefix.length()], KeyPath.length() - PathPrefix.length() };
+        
         RegistryKey NewKey;
         NewKey.Name = KeyName;
+        GlobalStringSubstitute(NewKey.Name, L"\r\n", L"\n");
 
         RegList.remove_prefix(EndKeyPos + 1);
         RegList.remove_prefix(Constants::RegFiles::NewLines.length());
