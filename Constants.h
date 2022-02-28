@@ -1,4 +1,4 @@
-// (C) Stormshield 2020
+// (C) Stormshield 2022
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 
@@ -29,6 +29,9 @@ namespace Constants {
     namespace Hives {
         /// Extensions of extra files that are generated when manipulating registry hives
         static const std::vector<std::wstring> LogFileExtensions{ L".LOG1", L".LOG2" };
+
+        /// Special value storing the destination of a symbolic link
+        static const std::wstring SymbolicLinkValue { L"SymbolicLinkValue" };
     };
 
     /// .reg file-specific constants
@@ -80,8 +83,11 @@ namespace Constants {
         /// Count of leading spaces when wrapping a hexadecimal rendition
         static const SIZE_T HexNewLineLeadingSpaces = 2u;
 
+        /// Space character at the beginning of a continuation line when wrapping hex values
+        static const WCHAR LeadingSpace { L' '};
+
         /// Sequence used when continuing a hexadecimal rendition on a new line
-        static const std::wstring HexByteNewLine { L"\\\r\n\u0020\u0020" };
+        static const std::wstring HexByteNewLine { L"\\\r\n" };
     };
 };
 

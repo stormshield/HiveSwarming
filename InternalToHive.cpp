@@ -1,4 +1,4 @@
-// (C) Stormshield 2020
+// (C) Stormshield 2022
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 
@@ -6,6 +6,7 @@
 #include "CommonFunctions.h"
 #include <sstream>
 #include <iomanip>
+#include "Constants.h"
 
 /// @brief Fill an empty HKEY with internal structures representing a registry key and dependencies
 /// @param[in] RegKey Registry key to dump into the HKEY
@@ -51,8 +52,16 @@ static HRESULT InternalToHkey(
             SubkeyHandle = NULL;
         }
 
-        Result = HRESULT_FROM_WIN32(RegCreateKeyExW(KeyHandle, Key.Name.c_str(), 0, NULL, REG_OPTION_NON_VOLATILE,
+        if (Key.Values.size() == 1 && Key.Subkeys.size() == 0 && Key.Values[0].Type == REG_LINK && Key.Values[0].Name == Constants::Hives::SymbolicLinkValue)
+        {
+            Result = HRESULT_FROM_WIN32(RegCreateKeyExW(KeyHandle, Key.Name.c_str(), 0, NULL, REG_OPTION_NON_VOLATILE | REG_OPTION_CREATE_LINK,
                 KEY_ALL_ACCESS, NULL, &SubkeyHandle, NULL));
+        }
+        else
+        {
+            Result = HRESULT_FROM_WIN32(RegCreateKeyExW(KeyHandle, Key.Name.c_str(), 0, NULL, REG_OPTION_NON_VOLATILE,
+                KEY_ALL_ACCESS, NULL, &SubkeyHandle, NULL));
+        }
 
         if (FAILED(Result))
         {

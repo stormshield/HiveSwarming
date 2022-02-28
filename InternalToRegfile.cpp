@@ -1,4 +1,4 @@
-// (C) Stormshield 2020
+// (C) Stormshield 2022
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 
@@ -99,6 +99,10 @@ static HRESULT RenderBinaryValue
             {
                 // adding "xx,\" would go over 80 characters, reg export typically breaks line here.
                 BinaryRenditionStream << Constants::RegFiles::HexByteNewLine;
+                for (SIZE_T SpaceCount = 0; SpaceCount < Constants::RegFiles::HexNewLineLeadingSpaces; ++SpaceCount)
+                {
+                    BinaryRenditionStream << Constants::RegFiles::LeadingSpace;
+                }
                 CurLineSizeSoFar = Constants::RegFiles::HexNewLineLeadingSpaces;
             }
         }

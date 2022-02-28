@@ -30,6 +30,10 @@
     <ClInclude Include="Constants.h" />
     <ClInclude Include="Conversions.h" />
     <ClInclude Include="CommonFunctions.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="HiveSwarming.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

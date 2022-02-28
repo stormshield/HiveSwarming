@@ -1,4 +1,4 @@
-// (C) Stormshield 2020
+// (C) Stormshield 2022
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 
@@ -252,6 +252,9 @@ static HRESULT ValueListToInternal
                 }
                 else if (HasString(Constants::RegFiles::HexByteNewLine))
                 {
+                    while (HasChar(Constants::RegFiles::LeadingSpace))
+                    {
+                    }
                     continue;
                 }
                 else if (ValueList.length() >= 2 && isxdigit(ValueList[0]) && isxdigit(ValueList[1]))
@@ -352,6 +355,12 @@ static HRESULT RegListToInternal
     HRESULT Result = E_FAIL;
     static const std::wstring KeyClosingAtEOL = Constants::RegFiles::KeyClosing + Constants::RegFiles::NewLines;
 
+    // remove additional line breaks
+    while (RegList.length() >= 2 && RegList[0] == L'\r' && RegList[1] == L'\n')
+    {
+        RegList.remove_prefix(2);
+    }
+
     if (RegList.empty())
     {
         std::wostringstream ErrorMessageStream;
@@ -386,9 +395,10 @@ static HRESULT RegListToInternal
             break;
         }
         const std::wstring_view KeyName{ &KeyPath[PathPrefix.length()], KeyPath.length() - PathPrefix.length() };
-        
+
         RegistryKey NewKey;
         NewKey.Name = KeyName;
+        // keys may have newlines in their name
         GlobalStringSubstitute(NewKey.Name, L"\r\n", L"\n");
 
         RegList.remove_prefix(EndKeyPos + 1);
@@ -416,6 +426,11 @@ static HRESULT RegListToInternal
         }
 
         RegKeys.emplace_back(std::move(NewKey));
+
+        while (RegList.length() >= 2 && RegList[0] == L'\r' && RegList[1] == L'\n')
+        {
+            RegList.remove_prefix(1);
+        }
     } while (!RegList.empty());
 
     return S_OK;

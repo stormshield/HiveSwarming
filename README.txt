@@ -1,4 +1,4 @@
-(C) 2020 Stormshield
+(C) 2022 Stormshield
 
 HiveSwarming - Conversions between registry hive and registry export formats
   without a need for special privileges.
@@ -30,22 +30,27 @@ A. Yes. First, when you load a hive file using the API RegLoadAppKeyW, all
    Second, if a key name contains a closing bracket followed by a newline
    character, your .reg file is not parseable. This limitation is also valid
    for standard .reg files
+   Third, when converting from .reg file to a hive, any key containing a single
+   value named "SymbolicLinkValue" and of type REG_LINK will be recreated as a
+   symbolic link. This should be what is expected most of the time.
 
 Q. Is the .reg file compatible with reg.exe import?
-A. Yes. However the generated .reg file has [(HiveRoot)] as root key. You will
+A. Mostly. The generated .reg file has [(HiveRoot)] as root key. You will
    have to substitute it globally to make it importable at any desired location.
-   When converting back, it is not necessary to keep [(HiveRoot)] as the root
-   key, but the only requirement is that all keys descend of the first one.
+   When converting back, it is not necessary to keep this name for the root key,
+   but a requirement is that all keys descend of the first one.
 
 Q. What are requirements for .reg files?
 A. .reg files must:
     - be encoded as UTF-16, Little-Endian, with a Byte Order Mark
     - Use \r\n for line endings
-    - Start with "Windows Registry Editor Version 5.00" and one blank line
-      only, followed by the first key
-    - Have all keys be descendants of the first key
+    - Start with "Windows Registry Editor Version 5.00" and at least one blank
+      line
+    - Have non-empty root key (first key) name
+    - Have all keys be descendants of the root key
     - Have no trailing or leading spaces on lines
-    - Have no blank lines between a key and its last value
+    - Have no blank lines between a key and its last value (except inside
+      string values when the string themselves contain blank lines)
     - Have a blank line after the last value of a key (including last key)
     - Be importable to the registry
    Some third party software, like RegView, will generate invalid files. For
