@@ -1,4 +1,4 @@
-// (C) Stormshield 2022
+// (C) Stormshield 2023
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 
@@ -166,7 +166,7 @@ HRESULT HiveToInternal
     HRESULT Result = E_FAIL;
     HKEY HiveKey = NULL;
 
-    Result = HRESULT_FROM_WIN32(RegLoadAppKeyW(HiveFilePath.c_str(), &HiveKey, KEY_ALL_ACCESS, REG_PROCESS_APPKEY, 0));
+    Result = HRESULT_FROM_WIN32(RegLoadAppKeyW(HiveFilePath.c_str(), &HiveKey, KEY_READ, REG_PROCESS_APPKEY, 0));
     if (FAILED(Result))
     {
         ReportError(Result, L"Loading hive file " + HiveFilePath);

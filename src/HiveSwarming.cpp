@@ -1,4 +1,4 @@
-﻿// (C) Stormshield 2022
+﻿// (C) Stormshield 2023
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 
