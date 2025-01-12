@@ -1,4 +1,4 @@
-(C) 2023 Stormshield
+(C) 2025 Stormshield
 
 HiveSwarming - Conversions between registry hive and registry export formats
   without a need for special privileges.
