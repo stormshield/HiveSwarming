@@ -7,6 +7,37 @@
 #include <sstream>
 #include <iomanip>
 #include "Constants.h"
+#include <windows.h>
+#include <winternl.h>
+
+static HMODULE NtDllModuleHandle = nullptr;
+static NTSTATUS(*NtSetValueKey)(
+    _In_     HANDLE          KeyHandle,
+    _In_     PUNICODE_STRING ValueName,
+    _In_opt_ ULONG           TitleIndex,
+    _In_     ULONG           Type,
+    _In_opt_ PVOID           Data,
+    _In_     ULONG           DataSize
+) = nullptr;
+
+_Must_inspect_result_
+static HRESULT LoadNtDllFunctions() {
+    if (NtDllModuleHandle == nullptr) {
+        NtDllModuleHandle = LoadLibraryExW(L"ntdll.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+        if (NtDllModuleHandle == nullptr) {
+            ReportError(HRESULT_FROM_WIN32(GetLastError()), L"Loading ntdll.dll");
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+    }
+    if (NtSetValueKey == nullptr) {
+        NtSetValueKey = (decltype(NtSetValueKey)) GetProcAddress(NtDllModuleHandle, "NtSetValueKey");
+        if (NtSetValueKey == nullptr) {
+            ReportError(HRESULT_FROM_WIN32(GetLastError()), L"Getting address of NtSetValueKey in ntdll.dll"); 
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+    }
+    return S_OK;
+}
 
 /// @brief Fill an empty HKEY with internal structures representing a registry key and dependencies
 /// @param[in] RegKey Registry key to dump into the HKEY
@@ -29,16 +60,42 @@ static HRESULT InternalToHkey(
 
     for (auto &Value : RegKey.Values)
     {
+        if (NtSetValueKey == nullptr)
+        {
+            Result = LoadNtDllFunctions();
+            if (FAILED(Result))
+            {
+                ReportError(Result, L"Loading ntdll functions");
+                goto Cleanup;
+            }
+            if (NtSetValueKey == nullptr)
+            {
+                Result = E_UNEXPECTED;
+                ReportError(Result, L"Loading ntdll functions");
+                goto Cleanup;
+            }
+        }
+        
+        if (Value.Name.size() >= USHRT_MAX / sizeof(WCHAR))
+        {
+            ReportError(E_UNEXPECTED, L"Name is too long (name: " + Value.Name + L")");
+            Result = E_UNEXPECTED;
+            goto Cleanup;
+        }
         if (Value.BinaryValue.size() > MAXDWORD)
         {
             ReportError(E_UNEXPECTED, L"Binary value is too long (name: " + Value.Name + L")");
             Result = E_UNEXPECTED;
             goto Cleanup;
         }
-        Result = HRESULT_FROM_WIN32(RegSetValueExW(KeyHandle, Value.Name.c_str(), 0, Value.Type,
-                Value.BinaryValue.data(), static_cast<DWORD>(Value.BinaryValue.size())));
-        if (FAILED(Result))
+        UNICODE_STRING ValueName = {};
+        ValueName.Buffer = (PWSTR)Value.Name.c_str();
+        ValueName.Length = (USHORT)Value.Name.size() * sizeof(*Value.Name.c_str());
+        ValueName.MaximumLength = ValueName.Length;
+        NTSTATUS Status = NtSetValueKey(KeyHandle, &ValueName, 0ul, Value.Type, (PVOID)Value.BinaryValue.data(), static_cast<ULONG>(Value.BinaryValue.size()));
+        if (NT_SUCCESS(Status) == FALSE)
         {
+            Result = HRESULT_FROM_NT(Status);
             ReportError(Result, L"Could not set value " + Value.Name + L" of key " + RegKey.Name);
             goto Cleanup;
         }
