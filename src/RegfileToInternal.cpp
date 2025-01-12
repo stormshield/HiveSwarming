@@ -157,7 +157,7 @@ static HRESULT ValueListToInternal
             {
                 std::wstring ReadValue{ &ValueList[0], 8 };
                 std::wistringstream DwordReadingStream{ ReadValue, std::ios_base::in };
-                DwordReadingStream >> std::hex >> std::setw(8) >> std::setfill(L'0') >> DwordValue;
+                DwordReadingStream >> std::hex >> DwordValue;
 
                 std::wostringstream DwordVerificationStream;
                 DwordVerificationStream << std::hex << std::setw(8) << std::setfill(L'0') << DwordValue;
