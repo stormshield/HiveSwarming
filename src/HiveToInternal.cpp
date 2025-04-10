@@ -6,17 +6,18 @@
 #include "CommonFunctions.h"
 #include <sstream>
 
-/// @brief Create an internal representation of a registry key from the handle to a registry key
-/// @param[in] Hkey the registry key
-/// @param[in] KeyName Name of the key #Hkey is a handle to
-/// @param[out] RegKey Representation of the key
-/// @return HRESULT semantics
-_Must_inspect_result_
-static HRESULT HkeyToInternal
+/// <summary>
+/// Convert a registry key to the internal representation
+/// </summary>
+/// <param name="Hkey">Handle to the registry key, with read rights</param>
+/// <param name="KeyName">Name of the key <paramref name="Hkey"/> is a handle to</param>
+/// <param name="RegKey">Internal representation of the key</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT HkeyToInternal
 (
-    _In_ const HKEY Hkey,
-    _In_ const std::wstring& KeyName,
-    _Out_ RegistryKey& RegKey
+    _In_  HKEY                      Hkey,
+    _In_  std::wstring_view const & KeyName,
+    _Out_ RegistryKey             & RegKey
 )
 {
     HRESULT Result = E_FAIL;
@@ -39,23 +40,23 @@ static HRESULT HkeyToInternal
         NULL, &ValueCount, &MaximalValueNameLength, &MaximalValueLength, NULL, NULL));
     if (FAILED(Result))
     {
-        ReportError(Result, L"Getting information on HKEY - Current key name: " + KeyName);
+        ReportError(Result, L"Getting information on HKEY - Current key name: " + std::wstring{ KeyName });
         goto Cleanup;
     }
 
-    SubKeyNameBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (1 + MaximalSubKeyLength) * sizeof(WCHAR));
+    SubKeyNameBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (1 + (size_t)MaximalSubKeyLength) * sizeof(WCHAR));
     if (SubKeyNameBuffer == NULL)
     {
         Result = HRESULT_FROM_WIN32(GetLastError());
-        ReportError(Result, L"Allocating space for subkey names - Current key name: " + KeyName);
+        ReportError(Result, std::wstring{ L"Allocating space for subkey names - Current key name: " } + std::wstring{ KeyName });
         goto Cleanup;
     }
 
-    ValueNameBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (1 + MaximalValueNameLength) * sizeof(WCHAR));
+    ValueNameBuffer = (LPWSTR)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (1 + (size_t)MaximalValueNameLength) * sizeof(WCHAR));
     if (ValueNameBuffer == NULL)
     {
         Result = HRESULT_FROM_WIN32(GetLastError());
-        ReportError(Result, L"Allocating space for value names - Current key name: " + KeyName);
+        ReportError(Result, std::wstring{ L"Allocating space for value names - Current key name: " } + std::wstring{ KeyName });
         goto Cleanup;
     }
 
@@ -63,7 +64,7 @@ static HRESULT HkeyToInternal
     if (ValueBuffer == NULL)
     {
         Result = HRESULT_FROM_WIN32(GetLastError());
-        ReportError(Result, L"Allocating space for values - Current key name: " + KeyName);
+        ReportError(Result, L"Allocating space for values - Current key name: " + std::wstring{ KeyName });
         goto Cleanup;
     }
 
@@ -84,10 +85,11 @@ static HRESULT HkeyToInternal
             goto Cleanup;
         }
 
-        RegistryValue NewValue;
-        NewValue.Name.assign(ValueNameBuffer, ValueNameLength);
-        NewValue.Type = ValueType;
-        NewValue.BinaryValue.assign(ValueBuffer, ValueBuffer + DataLength);
+        RegistryValue NewValue{
+            .Name       {ValueNameBuffer, ValueNameLength},
+            .Type       {ValueType},
+            .BinaryValue{ValueBuffer, ValueBuffer + DataLength}
+        };
 
         RegKey.Values.emplace_back(std::move(NewValue));
     }
@@ -118,11 +120,11 @@ static HRESULT HkeyToInternal
             goto Cleanup;
         }
 
-        std::wstring SubkeyName;
-        SubkeyName.assign(SubKeyNameBuffer, SubkeyNameLength);
+        std::wstring SubkeyName{ SubKeyNameBuffer, SubkeyNameLength };
 
         RegistryKey NewKey;
-        Result = HkeyToInternal(HSubkey, SubkeyName, NewKey);
+        Result = HkeyToInternal(HSubkey, SubkeyName, NewKey); /// ⟵ Recursion here
+        RegCloseKey(HSubkey);
         if (FAILED(Result))
         {
             std::wostringstream ErrorMessageStream;
@@ -131,8 +133,6 @@ static HRESULT HkeyToInternal
             goto Cleanup;
         }
         RegKey.Subkeys.emplace_back(std::move(NewKey));
-
-        RegCloseKey(HSubkey);
     }
 Cleanup:
     if (SubKeyNameBuffer)
@@ -154,13 +154,11 @@ Cleanup:
     return Result;
 }
 
-// non-static function: documented in header.
-_Must_inspect_result_
-HRESULT HiveToInternal
+_Must_inspect_result_ HRESULT HiveToInternal
 (
-    _In_ const std::wstring& HiveFilePath,
-    _In_ const std::wstring& RootName,
-    _Out_ RegistryKey& RegKey
+    _In_  std::wstring      const & HiveFilePath,
+    _In_  std::wstring_view const & RootName,
+    _Out_ RegistryKey             & RegKey
 )
 {
     HRESULT Result = E_FAIL;
@@ -169,7 +167,7 @@ HRESULT HiveToInternal
     Result = HRESULT_FROM_WIN32(RegLoadAppKeyW(HiveFilePath.c_str(), &HiveKey, KEY_READ, REG_PROCESS_APPKEY, 0));
     if (FAILED(Result))
     {
-        ReportError(Result, L"Loading hive file " + HiveFilePath);
+        ReportError(Result, L"Loading hive file " + std::wstring{ HiveFilePath });
         goto Cleanup;
     }
 
@@ -183,7 +181,6 @@ Cleanup:
 
         DeleteHiveLogFiles(HiveFilePath);
     }
-
 
     return Result;
 }

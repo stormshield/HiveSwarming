@@ -7,71 +7,24 @@
 #include "CommonFunctions.h"
 #include <sstream>
 #include <iomanip>
+#include <string_view>
 
-/// @brief Append binary contents of a std::wstring to an opened file
-/// @param[in] OutFileHandle Handle to the file
-/// @param[in] String Input string
-/// @note The string buffer is dumped to the file “as is”.
-///       Null characters may be appended to the file if the string buffer includes some of them.
-_Must_inspect_result_
-static HRESULT WriteStringBufferToFile
+/// <summary>
+/// Render arbitrary data as hex string in a .reg file
+/// </summary>
+/// <param name="OutFileHandle">Handle to the output file, with write permissions</param>
+/// <param name="FirstLineSizeSoFar">How many characters were already written on the current .reg file line, used for wrapping as standard .reg generation tools do</param>
+/// <param name="RegValue">Value to render</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT RenderBinaryValue
 (
-    _In_ const HANDLE OutFileHandle,
-    _In_ const std::wstring String
+    _In_ HANDLE                OutFileHandle,
+    _In_ size_t                FirstLineSizeSoFar,
+    _In_ RegistryValue const & RegValue
 )
 {
     HRESULT Result = E_FAIL;
-
-    if (String.length() >= MAXDWORD / sizeof(decltype(String)::traits_type::char_type))
-    {
-        Result = HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW);
-        ReportError(Result, L"Writing data that is too large");
-        return Result;
-    }
-
-    if (OutFileHandle == NULL || OutFileHandle == INVALID_HANDLE_VALUE)
-    {
-        ReportError(E_HANDLE, L"Invalid parameter");
-        return E_HANDLE;
-    }
-
-    {
-        const DWORD BytesToWrite = static_cast<DWORD>(String.length() * sizeof(decltype(String)::traits_type::char_type));
-        DWORD BytesWritten = 0;
-
-        if (!WriteFile(OutFileHandle, (LPCVOID)String.c_str(), BytesToWrite, &BytesWritten, NULL))
-        {
-            Result = HRESULT_FROM_WIN32(GetLastError());
-            ReportError(Result, L"Could not write to output file");
-            return Result;
-        }
-        if (BytesWritten != BytesToWrite)
-        {
-            Result = E_UNEXPECTED;
-            ReportError(Result, L"Bytes not fully written to file");
-            return Result;
-        }
-    }
-    return S_OK;
-}
-
-/// @brief Render the contents of a registry value in a .reg file
-/// @param[in] OutFileHandle Handle to the file
-/// @param[in] FirstLineSizeSoFar How many characters have already been written on the line when dumping
-///                               the name of the value and the equal sign.
-///                               This is used for mimicking .reg format line breaks before lines over 80 characters
-/// @param[in] RegValue Representation of the registry value
-/// @return HRESULT semantics
-_Must_inspect_result_
-static HRESULT RenderBinaryValue
-(
-    _In_ const HANDLE OutFileHandle,
-    _In_ const SIZE_T FirstLineSizeSoFar,
-    _In_ const RegistryValue& RegValue
-)
-{
-    HRESULT Result = E_FAIL;
-    SIZE_T CurLineSizeSoFar = FirstLineSizeSoFar;
+    size_t CurLineSizeSoFar = FirstLineSizeSoFar;
     if (OutFileHandle == NULL || OutFileHandle == INVALID_HANDLE_VALUE)
     {
         return E_HANDLE;
@@ -83,7 +36,7 @@ static HRESULT RenderBinaryValue
     {
         BinaryRenditionStream << Constants::RegFiles::HexTypeSpecOpening << std::hex << RegValue.Type << Constants::RegFiles::HexTypeSpecClosing;
     }
-    BinaryRenditionStream << Constants::RegFiles::HexSuffix;
+    BinaryRenditionStream << Constants::RegFiles::ValueTypeAndDataSeparator;
 
     CurLineSizeSoFar += BinaryRenditionStream.str().length();
 
@@ -98,8 +51,8 @@ static HRESULT RenderBinaryValue
             if (CurLineSizeSoFar > Constants::RegFiles::HexWrappingLimit - 4)
             {
                 // adding "xx,\" would go over 80 characters, reg export typically breaks line here.
-                BinaryRenditionStream << Constants::RegFiles::HexByteNewLine;
-                for (SIZE_T SpaceCount = 0; SpaceCount < Constants::RegFiles::HexNewLineLeadingSpaces; ++SpaceCount)
+                BinaryRenditionStream << Constants::RegFiles::EscapedNewLine;
+                for (size_t SpaceCount = 0; SpaceCount < Constants::RegFiles::HexNewLineLeadingSpaces; ++SpaceCount)
                 {
                     BinaryRenditionStream << Constants::RegFiles::LeadingSpace;
                 }
@@ -120,17 +73,18 @@ static HRESULT RenderBinaryValue
     return S_OK;
 }
 
-/// @brief Render the contents of a REG_DWORD registry value in a .reg file
-/// @param[in] OutFileHandle Handle to the file
-/// @param[in] FirstLineSizeSoFar Use for fallback to #RenderBinaryValue
-/// @param[in] RegValue Representation of the registry value
-/// @return HRESULT semantics
-_Must_inspect_result_
-static HRESULT RenderDwordValue
+/// <summary>
+/// Render REG_DWORD value in a .reg file
+/// </summary>
+/// <param name="OutFileHandle">Handle to the output file, with write permissions</param>
+/// <param name="FirstLineSizeSoFar">How many characters were already written on the current .reg file line, used for wrapping as standard .reg generation tools do</param>
+/// <param name="RegValue">Value to render</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT RenderDwordValue
 (
-    _In_ const HANDLE OutFileHandle,
-    _In_ const SIZE_T FirstLineSizeSoFar,
-    _In_ const RegistryValue& RegValue
+    _In_ HANDLE                OutFileHandle,
+    _In_ size_t                FirstLineSizeSoFar,
+    _In_ RegistryValue const & RegValue
 )
 {
     if (OutFileHandle == NULL || OutFileHandle == INVALID_HANDLE_VALUE)
@@ -159,21 +113,58 @@ static HRESULT RenderDwordValue
 
 }
 
-/// @brief Render the contents of a REG_SZ registry value in a .reg file
-/// @param[in] OutFileHandle Handle to the file
-/// @param[in] FirstLineSizeSoFar Use for fallback to #RenderBinaryValue
-/// @param[in] RegValue Representation of the registry value
-/// @return HRESULT semantics
-/// @note This falls back to binary rendition if the REG_SZ does not meet requirements such as:
-///       - REG_SZ values should be terminated by a null character
-///       - REG_SZ values may not contain other null characters
-///       - REG_SZ value sizes should be a multiple of 2 as they store WCHAR-based values.
-_Must_inspect_result_
-static HRESULT RenderStringValue
+/// <summary>
+/// Hiveswarming extension: Render REG_QWORD value in a .reg file
+/// </summary>
+/// <param name="OutFileHandle">Handle to the output file, with write permissions</param>
+/// <param name="FirstLineSizeSoFar">How many characters were already written on the current .reg file line, used for wrapping as standard .reg generation tools do</param>
+/// <param name="RegValue">Value to render</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT RenderQwordValue
 (
-    _In_ const HANDLE OutFileHandle,
-    _In_ const SIZE_T FirstLineSizeSoFar,
-    _In_ const RegistryValue& RegValue
+    _In_ HANDLE                OutFileHandle,
+    _In_ size_t                FirstLineSizeSoFar,
+    _In_ RegistryValue const & RegValue
+)
+{
+    if (OutFileHandle == NULL || OutFileHandle == INVALID_HANDLE_VALUE)
+    {
+        ReportError(E_HANDLE, L"Invalid parameter");
+        return E_HANDLE;
+    }
+
+    if (RegValue.Type != REG_QWORD)
+    {
+        ReportError(E_HANDLE, L"Invalid parameter");
+        return E_INVALIDARG;
+    }
+
+    if (RegValue.BinaryValue.size() != sizeof(ULONGLONG))
+    {
+        return RenderBinaryValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
+    }
+
+    std::wostringstream QwordRenditionStream;
+    QwordRenditionStream << L"qword:";
+    QwordRenditionStream << std::hex << std::setw(16) << std::setfill(L'0') << *(ULONGLONG*)(RegValue.BinaryValue.data());
+    QwordRenditionStream << Constants::RegFiles::NewLines;
+
+    return WriteStringBufferToFile(OutFileHandle, QwordRenditionStream.str());
+
+}
+
+/// <summary>
+/// Render REG_SZ value in a .reg file
+/// </summary>
+/// <param name="OutFileHandle">Handle to the output file, with write permissions</param>
+/// <param name="FirstLineSizeSoFar">How many characters were already written on the current .reg file line, used for wrapping as standard .reg generation tools do</param>
+/// <param name="RegValue">Value to render</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT RenderStringValue
+(
+    _In_ HANDLE                OutFileHandle,
+    _In_ size_t                FirstLineSizeSoFar,
+    _In_ RegistryValue const & RegValue
 )
 {
     std::wstring WstringValue;
@@ -220,19 +211,128 @@ static HRESULT RenderStringValue
     return WriteStringBufferToFile(OutFileHandle, StringRenditionStream.str());
 }
 
-/// @brief Render a registry value and its contents in a .reg file
-/// @param[in] OutFileHandle Handle to the file
-/// @param[in] RegValue Representation of the registry value
-/// @return HRESULT semantics
-_Must_inspect_result_
-HRESULT RenderRegistryValue
+/// <summary>
+/// Hiveswarming extension: Render a value to .reg file as a zero-terminated string or sequence of zero-terminated strings
+/// </summary>
+/// <param name="OutFileHandle">Handle to the output file, with write permissions</param>
+/// <param name="FirstLineSizeSoFar">How many characters were already written on the current .reg file line, used for wrapping as standard .reg generation tools do</param>
+/// <param name="TypeSpecifier">What type to indicate</param>
+/// <param name="RegValue">Value to render</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT RenderMultiSzValue
 (
-    _In_ const HANDLE OutFileHandle,
-    _In_ const RegistryValue& RegValue
+    _In_ HANDLE                    OutFileHandle,
+    _In_ size_t                    FirstLineSizeSoFar,
+    _In_ std::wstring_view const & TypeSpecifier,
+    _In_ RegistryValue     const & RegValue
+)
+{
+    std::wstring WstringValue;
+    if (OutFileHandle == NULL || OutFileHandle == INVALID_HANDLE_VALUE)
+    {
+        ReportError(E_HANDLE, L"Invalid parameter");
+        return E_HANDLE;
+    }
+
+    if (RegValue.BinaryValue.size() % sizeof(WCHAR) != 0)
+    {
+        return RenderBinaryValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
+    }
+
+    WstringValue.assign((PWCHAR)RegValue.BinaryValue.data(), RegValue.BinaryValue.size() / sizeof(WCHAR));
+    if (WstringValue.empty())
+    {
+        return RenderBinaryValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
+    }
+
+    if (WstringValue.empty() || WstringValue.back() != L'\0')
+    {
+        return RenderBinaryValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
+    }
+
+    size_t CurLineSizeSoFar = FirstLineSizeSoFar;
+    std::wostringstream StringRenditionStream;
+    StringRenditionStream << TypeSpecifier << Constants::RegFiles::ValueTypeAndDataSeparator;
+
+    std::wstring_view Remainder { WstringValue };
+    while (!Remainder.empty())
+    {
+        StringRenditionStream << L"\"";
+        while (!Remainder.empty())
+        {
+            WCHAR c = Remainder.front();
+            Remainder.remove_prefix(1);
+
+            if (c == L'\0') {
+                StringRenditionStream << L"\"";
+                break;
+            }
+
+            switch (c) {
+            case L'\n':
+                StringRenditionStream << L'\r';
+                break;
+
+            case Constants::RegFiles::StringDelimiterEscape:
+            case Constants::RegFiles::StringDelimiter:
+                StringRenditionStream << Constants::RegFiles::StringDelimiterEscape;
+                break;
+            default:
+                break;
+            }
+
+            StringRenditionStream << c;
+        }
+
+        if (Remainder.empty())
+        {
+            StringRenditionStream << Constants::RegFiles::NewLines;
+            return WriteStringBufferToFile(OutFileHandle, StringRenditionStream.str());
+        }
+        else
+        {
+            StringRenditionStream << Constants::RegFiles::MultiSzSeparator;
+
+            CurLineSizeSoFar += StringRenditionStream.view().length();
+            if (CurLineSizeSoFar > Constants::RegFiles::MultiSzWrappingLimit - 2)
+            {
+                // adding ",\" would go over 80 characters, reg export typically breaks line here.
+                StringRenditionStream << Constants::RegFiles::EscapedNewLine;
+
+                HRESULT Result = WriteStringBufferToFile(OutFileHandle, StringRenditionStream.str());
+                if (FAILED(Result)) {
+                    return Result;
+                }
+
+                StringRenditionStream.str(L"");
+
+                for (size_t SpaceCount = 0; SpaceCount < FirstLineSizeSoFar; ++SpaceCount)
+                {
+                    StringRenditionStream << Constants::RegFiles::LeadingSpace;
+                }
+                CurLineSizeSoFar = FirstLineSizeSoFar;
+            }
+        }
+    }
+    return WriteStringBufferToFile(OutFileHandle, StringRenditionStream.str());
+}
+
+/// <summary>
+/// Render a registry value to a .reg file
+/// </summary>
+/// <param name="OutFileHandle">Handle to the output file, with write permissions</param>
+/// <param name="RegValue">Value to render</param>
+/// <param name="EnableExtensions">Whether to enable Hiveswarming extensions for REG_QWORD, REG_EXPAND_SZ and REG_MULTI_SZ values</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT RenderRegistryValue
+(
+    _In_ HANDLE                OutFileHandle,
+    _In_ RegistryValue const & RegValue,
+    _In_ bool                  EnableExtensions
 )
 {
     HRESULT Result = E_FAIL;
-    SIZE_T FirstLineSizeSoFar = 0;
+    size_t FirstLineSizeSoFar = 0;
     if (OutFileHandle == NULL || OutFileHandle == INVALID_HANDLE_VALUE)
     {
         ReportError(E_HANDLE, L"Invalid parameter");
@@ -265,24 +365,42 @@ HRESULT RenderRegistryValue
     {
         return RenderDwordValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
     }
-    if (RegValue.Type == REG_SZ)
+    else if (RegValue.Type == REG_SZ)
     {
         return RenderStringValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
     }
-    return RenderBinaryValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
+    else if (RegValue.Type == REG_QWORD && EnableExtensions)
+    {
+        return RenderQwordValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
+    }
+    else if (RegValue.Type == REG_MULTI_SZ && EnableExtensions)
+    {
+        return RenderMultiSzValue(OutFileHandle, FirstLineSizeSoFar, Constants::RegFiles::MultiSzPrefix, RegValue);
+    }
+    else if (RegValue.Type == REG_EXPAND_SZ && EnableExtensions)
+    {
+        return RenderMultiSzValue(OutFileHandle, FirstLineSizeSoFar, Constants::RegFiles::ExpandSzPrefix, RegValue);
+    }
+    else
+    {
+        return RenderBinaryValue(OutFileHandle, FirstLineSizeSoFar, RegValue);
+    }
 }
 
-/// @brief Render a registry key and its values and subkeys in a .reg file
-/// @param[in] OutFileHandle Handle to the file
-/// @param[in] RegKey Representation of the registry key
-/// @param[in] PathSoFar Path to this key
-/// @return HRESULT semantics
-_Must_inspect_result_
-HRESULT RenderRegistryKey
+/// <summary>
+/// Render a registry key and its child keys to a .reg file
+/// </summary>
+/// <param name="OutFileHandle">Handle to the output file, with write permissions</param>
+/// <param name="RegKey">Key to render</param>
+/// <param name="PathSoFar">Path to the parent key</param>
+/// <param name="EnableExtensions">Whether to enable Hiveswarming extensions for REG_QWORD, REG_EXPAND_SZ and REG_MULTI_SZ values</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT RenderRegistryKeyToRegFormat
 (
-    _In_ const HANDLE OutFileHandle,
-    _In_ const RegistryKey& RegKey,
-    _In_ const std::wstring &PathSoFar
+    _In_ HANDLE              OutFileHandle,
+    _In_ RegistryKey const & RegKey,
+    _In_ std::wstring      & PathSoFar,
+    _In_ bool                EnableExtensions
 )
 {
     HRESULT Result = E_FAIL;
@@ -319,7 +437,7 @@ HRESULT RenderRegistryKey
 
     for (const RegistryValue &Value : RegKey.Values)
     {
-        Result = RenderRegistryValue(OutFileHandle, Value);
+        Result = RenderRegistryValue(OutFileHandle, Value, EnableExtensions);
         if (FAILED(Result))
         {
             ReportError(E_HANDLE, L"Could not render registry value" + Value.Name);
@@ -338,7 +456,7 @@ HRESULT RenderRegistryKey
 
     for (const RegistryKey &Key : RegKey.Subkeys)
     {
-        Result = RenderRegistryKey(OutFileHandle, Key, NewPath);
+        Result = RenderRegistryKeyToRegFormat(OutFileHandle, Key, NewPath, EnableExtensions);
         if (FAILED(Result))
         {
             ReportError(E_HANDLE, L"Could not render registry key" + Key.Name);
@@ -349,12 +467,11 @@ HRESULT RenderRegistryKey
     return S_OK;
 }
 
-// non-static function: documented in header.
-_Must_inspect_result_
-HRESULT InternalToRegfile
+_Must_inspect_result_ HRESULT InternalToRegfile
 (
-    _In_ const RegistryKey& RegKey,
-    _In_ const std::wstring& OutputFilePath
+    _In_ RegistryKey  const & RegKey,
+    _In_ std::wstring const & OutputFilePath,
+    _In_ bool                 EnableExtensions
 )
 {
     HRESULT Result = E_FAIL;
@@ -377,11 +494,14 @@ HRESULT InternalToRegfile
         }
     }
 
-    Result = RenderRegistryKey(OutFileHandle, RegKey, std::wstring{});
-    if (FAILED(Result))
     {
-        ReportError(Result, L"Could not render registry key");
-        goto Cleanup;
+        std::wstring EmptyPathForRootValue{};
+        Result = RenderRegistryKeyToRegFormat(OutFileHandle, RegKey, EmptyPathForRootValue, EnableExtensions);
+        if (FAILED(Result))
+        {
+            ReportError(Result, L"Could not render registry key");
+            goto Cleanup;
+        }
     }
 
     Result = S_OK;

@@ -8,75 +8,120 @@
 #include <string>
 #include <vector>
 
-/// Internal representation of a registry value.
+/// <summary>
+/// Internal representation of a registry value
+/// </summary>
 struct RegistryValue {
-    /// Name of the registry value. May not contain null character
+    /// <summary>
+    /// Name of the registry value. May contain the null character
+    /// </summary>
     std::wstring Name;
 
-    /// Type of the registry value. Usually a small number.
+    /// <summary>
+    /// Type of the registry values, usually a small number.
+    /// </summary>
     DWORD Type;
 
-    /// Binary representation of the underlying data as a byte buffer.
+    /// <summary>
+    /// Binary representation of the value
+    /// </summary>
     std::vector<BYTE> BinaryValue;
 };
 
-/// Internal representation of a registry key.
+/// <summary>
+/// Internal representation of a registry key
+/// </summary>
 struct RegistryKey {
-    /// Name of the registry key. May contain any character except backslash
+    /// <summary>
+    /// Name of the registry key. May contain any character except for backslash.
+    /// </summary>
     std::wstring Name;
 
-    /// Container of subkeys
+    /// <summary>
+    /// Container of child registry keys
+    /// </summary>
     std::vector<RegistryKey> Subkeys;
 
-    /// Container of values
+    /// <summary>
+    /// Container of registry values
+    /// </summary>
     std::vector<RegistryValue> Values;
 };
 
-/// @brief Create an internal representation of a registry key from a registry hive (binary) file
-/// @param[in] HiveFilePath Path to the registry hive
-/// @param[in] RootName Path to the root key for export
-/// @param[out] RegKey Internal structure
-/// @return HRESULT semantics
-/// @note For the moment, system files that are created (.LOG1, .LOG2) are not cleaned up.
-_Must_inspect_result_
-HRESULT HiveToInternal
+/// <summary>
+/// Read a registry hive (binary) file, and convert it to the internal representation
+/// </summary>
+/// <param name="HiveFilePath">Path to the registry hive</param>
+/// <param name="RootName">Path to the root key for export</param>
+/// <param name="RegKey">Output internal structure</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ HRESULT HiveToInternal
 (
-    _In_ const std::wstring &HiveFilePath,
-    _In_ const std::wstring &RootName,
-    _Out_ RegistryKey& RegKey
+    _In_  std::wstring      const & HiveFilePath,
+    _In_  std::wstring_view const & RootName,
+    _Out_ RegistryKey             & RegKey
 );
 
-/// @brief Create a .reg file from the internal representation of a registry key
-/// @param[in] RegKey Representation of the registry key
-/// @param[in] OutputFilePath Path of the desired output file
-/// @return HRESULT semantics
-/// @note #OutputFilePath is overwritten if it already exists
-_Must_inspect_result_
-HRESULT InternalToRegfile
+/// <summary>
+/// Read a .reg (text) file, and convert it to the internal representation
+/// </summary>
+/// <param name="RegFilePath">Path to the registry .reg file</param>
+/// <param name="RegKey">Output internal structure</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ HRESULT RegfileToInternal
 (
-    _In_ const RegistryKey& RegKey,
-    _In_ const std::wstring &OutputFilePath
+    _In_  std::wstring const & RegFilePath,
+    _Out_ RegistryKey        & RegKey
 );
 
-/// @brief Create a hive file from the internal representation of a registry key
-/// @param[in] RegKey Representation of the registry key
-/// @param[in] OutputFilePath Path of the desired output file
-/// @return HRESULT semantics
-/// @note #OutputFilePath is overwritten if it already exists
-_Must_inspect_result_
-HRESULT InternalToHive
+
+/// <summary>
+/// Read a .pol (binary) file, and convert it to the internal representation
+/// </summary>
+/// <param name="RegFilePath">Path to the policy (.pol) file</param>
+/// <param name="RegKey">Output internal structure</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ HRESULT PolfileToInternal
 (
-    _In_ const RegistryKey& RegKey,
-    _In_ const std::wstring &OutputFilePath
+    _In_  std::wstring      const & FilePath,
+    _In_  std::wstring_view const & RootName,
+    _Out_ RegistryKey             & RegKey
 );
 
-/// @brief Create an internal representation of a registry key from a registry .reg (text) file
-/// @param[in] RegFilePath Path to the registry .reg file
-/// @param[out] RegKey Internal structure
-/// @return HRESULT semantics
-_Must_inspect_result_
-HRESULT RegfileToInternal
+/// <summary>
+/// Create or overwrite a hive file from the internal representation of a registry key
+/// </summary>
+/// <param name="RegKey">Internal representation of the registry key</param>
+/// <param name="OutputFilePath">Path of the desired hive file</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ HRESULT InternalToHive
 (
-    _In_ const std::wstring& RegFilePath,
-    _Out_ RegistryKey& RegKey
+    _In_ RegistryKey  const & RegKey,
+    _In_ std::wstring const & OutputFilePath
+);
+
+/// <summary>
+/// Create or overwrite a .reg file from the internal representation of a registry key
+/// </summary>
+/// <param name="RegKey">Internal representation of the registry key</param>
+/// <param name="OutputFilePath">Path of the desired .reg file</param>
+/// <param name="EnableExtensions">Whether we should use the Hiveswarming .reg format extensions</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ HRESULT InternalToRegfile
+(
+    _In_ RegistryKey  const & RegKey,
+    _In_ std::wstring const & OutputFilePath,
+    _In_ bool                 EnableExtensions
+);
+
+/// <summary>
+/// Create or overwrite a .pol file from the internal representation of a registry key
+/// </summary>
+/// <param name="RegKey">Internal representation of the registry key</param>
+/// <param name="OutputFilePath">Path of the desired .pol file</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ HRESULT InternalToPolfile
+(
+    _In_ RegistryKey  const & RegKey,
+    _In_ std::wstring const & OutputFilePath
 );

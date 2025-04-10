@@ -1,3 +1,9 @@
+Version 1.5 - 
+  * Add support for .pol files
+  * Extend .reg file format for readability of REG_MULTI_SZ,
+    REG_EXPAND_SZ and REG_QWORD values
+  * Changed command line syntax to adapt for more formats
+
 Version 1.4 - 2025-01-12
   * Fix binary data alteration when dealing with some
     nonconformant registry values

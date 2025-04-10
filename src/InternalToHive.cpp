@@ -10,7 +10,14 @@
 #include <windows.h>
 #include <winternl.h>
 
+/// <summary>
+/// Handle to the NTDLL Module, used for calling NtSetValueKey directly
+/// </summary>
 static HMODULE NtDllModuleHandle = nullptr;
+
+/// <summary>
+/// Pointer to the NtSetValueKey function
+/// </summary>
 static NTSTATUS(*NtSetValueKey)(
     _In_     HANDLE          KeyHandle,
     _In_     PUNICODE_STRING ValueName,
@@ -20,8 +27,11 @@ static NTSTATUS(*NtSetValueKey)(
     _In_     ULONG           DataSize
 ) = nullptr;
 
-_Must_inspect_result_
-static HRESULT LoadNtDllFunctions() {
+/// <summary>
+/// Obtain the address to the NtSetValueKey function
+/// </summary>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT LoadNtDllFunctions() {
     if (NtDllModuleHandle == nullptr) {
         NtDllModuleHandle = LoadLibraryExW(L"ntdll.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
         if (NtDllModuleHandle == nullptr) {
@@ -32,21 +42,23 @@ static HRESULT LoadNtDllFunctions() {
     if (NtSetValueKey == nullptr) {
         NtSetValueKey = (decltype(NtSetValueKey)) GetProcAddress(NtDllModuleHandle, "NtSetValueKey");
         if (NtSetValueKey == nullptr) {
-            ReportError(HRESULT_FROM_WIN32(GetLastError()), L"Getting address of NtSetValueKey in ntdll.dll"); 
+            ReportError(HRESULT_FROM_WIN32(GetLastError()), L"Getting address of NtSetValueKey in ntdll.dll");
             return HRESULT_FROM_WIN32(GetLastError());
         }
     }
     return S_OK;
 }
 
-/// @brief Fill an empty HKEY with internal structures representing a registry key and dependencies
-/// @param[in] RegKey Registry key to dump into the HKEY
-/// @param[in] KeyHandle Handle to the key
-/// @return HRESULT semantics
-_Must_inspect_result_
-static HRESULT InternalToHkey(
-    _In_ const RegistryKey& RegKey,
-    _In_ const HKEY KeyHandle
+/// <summary>
+/// Writes the internal representation to a hegistry key handle
+/// </summary>
+/// <param name="RegKey">Internal representation</param>
+/// <param name="KeyHandle">Handle to a registry key with write access</param>
+/// <returns>Return value follows HRESULT semantics. Use the SUCCEEDED() or FAILED() macros to test success.</returns>
+_Must_inspect_result_ static HRESULT InternalToHkey
+(
+    _In_ RegistryKey const & RegKey,
+    _In_ HKEY                KeyHandle
 )
 {
     HRESULT Result = E_FAIL;
@@ -75,7 +87,7 @@ static HRESULT InternalToHkey(
                 goto Cleanup;
             }
         }
-        
+
         if (Value.Name.size() >= USHRT_MAX / sizeof(WCHAR))
         {
             ReportError(E_UNEXPECTED, L"Name is too long (name: " + Value.Name + L")");
@@ -95,8 +107,7 @@ static HRESULT InternalToHkey(
         NTSTATUS Status = NtSetValueKey(KeyHandle, &ValueName, 0ul, Value.Type, (PVOID)Value.BinaryValue.data(), static_cast<ULONG>(Value.BinaryValue.size()));
         if (NT_SUCCESS(Status) == FALSE)
         {
-            Result = HRESULT_FROM_NT(Status);
-            ReportError(Result, L"Could not set value " + Value.Name + L" of key " + RegKey.Name);
+            ReportError(Status, L"Could not set value " + Value.Name + L" of key " + RegKey.Name + L" with NtSetValueKey, trying fallback");
             goto Cleanup;
         }
     }
@@ -146,13 +157,10 @@ Cleanup:
     return Result;
 }
 
-
-// non-static function: documented in header.
-_Must_inspect_result_
-HRESULT InternalToHive
+_Must_inspect_result_ HRESULT InternalToHive
 (
-    _In_ const RegistryKey& RegKey,
-    _In_ const std::wstring& OutputFilePath
+    _In_ RegistryKey  const & RegKey,
+    _In_ std::wstring const & OutputFilePath
 )
 {
     HRESULT Result = E_FAIL;

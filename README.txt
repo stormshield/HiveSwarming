@@ -6,8 +6,15 @@ HiveSwarming - Conversions between registry hive and registry export formats
 USAGE
 -----
 
-HiveSwarming.exe --reg-file-to-hive <export.reg> <hive_file>
-HiveSwarming.exe --hive-to-reg-file <hive_file> <export.reg>
+HiveSwarming.exe --from <format> --to <format> <input_file> <output_file>
+
+Supported values for <format>:
+ * reg  : .reg format as produced by the Registry Editor
+ * hive : binary format used by MS Windows
+ * pol  : .pol format used in Group Policy DataStores
+ * reg+ : .reg format with extensions for readability of REG_MULTI_SZ,
+          REG_EXPAND_SZ and REG_QWORD values.
+          This format is NOT recognized by the standard tools!
 
 EXIT CODE
 ---------

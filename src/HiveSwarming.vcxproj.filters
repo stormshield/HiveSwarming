@@ -13,25 +13,37 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Readers">
+      <UniqueIdentifier>{28012152-1e12-4b80-800d-d49ea6871e1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Writers">
+      <UniqueIdentifier>{6489293b-479b-438a-9d1c-d1c6a540e115}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HiveSwarming.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RegfileToInternal.cpp">
+    <ClCompile Include="CommonFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HiveToInternal.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Readers</Filter>
+    </ClCompile>
+    <ClCompile Include="PolfileToInternal.cpp">
+      <Filter>Source Files\Readers</Filter>
+    </ClCompile>
+    <ClCompile Include="RegfileToInternal.cpp">
+      <Filter>Source Files\Readers</Filter>
     </ClCompile>
     <ClCompile Include="InternalToHive.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Writers</Filter>
+    </ClCompile>
+    <ClCompile Include="InternalToPolfile.cpp">
+      <Filter>Source Files\Writers</Filter>
     </ClCompile>
     <ClCompile Include="InternalToRegfile.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CommonFunctions.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Writers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
