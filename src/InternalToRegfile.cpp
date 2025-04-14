@@ -105,9 +105,9 @@ _Must_inspect_result_ static HRESULT RenderDwordValue
     }
 
     std::wostringstream DwordRenditionStream;
-    DwordRenditionStream << L"dword:";
-    DwordRenditionStream << std::hex << std::setw(8) << std::setfill(L'0') << *(DWORD*)(RegValue.BinaryValue.data());
-    DwordRenditionStream << Constants::RegFiles::NewLines;
+    DwordRenditionStream << Constants::RegFiles::DwordPrefix << Constants::RegFiles::ValueTypeAndDataSeparator
+                         << std::hex << std::setw(8) << std::setfill(L'0') << *(DWORD*)(RegValue.BinaryValue.data())
+                         << Constants::RegFiles::NewLines;
 
     return WriteStringBufferToFile(OutFileHandle, DwordRenditionStream.str());
 
@@ -145,9 +145,9 @@ _Must_inspect_result_ static HRESULT RenderQwordValue
     }
 
     std::wostringstream QwordRenditionStream;
-    QwordRenditionStream << L"qword:";
-    QwordRenditionStream << std::hex << std::setw(16) << std::setfill(L'0') << *(ULONGLONG*)(RegValue.BinaryValue.data());
-    QwordRenditionStream << Constants::RegFiles::NewLines;
+    QwordRenditionStream << Constants::RegFiles::QwordPrefix << Constants::RegFiles::ValueTypeAndDataSeparator
+                         << std::hex << std::setw(16) << std::setfill(L'0') << *(ULONGLONG*)(RegValue.BinaryValue.data())
+                         << Constants::RegFiles::NewLines;
 
     return WriteStringBufferToFile(OutFileHandle, QwordRenditionStream.str());
 
