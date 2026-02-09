@@ -1,4 +1,4 @@
-// (C) Stormshield 2025
+// (C) Stormshield 2026
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 

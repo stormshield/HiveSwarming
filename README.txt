@@ -1,4 +1,4 @@
-(C) 2025 Stormshield
+(C) 2026 Stormshield
 
 HiveSwarming - Conversions between registry hive and registry export formats
   without a need for special privileges.
@@ -74,3 +74,15 @@ A. This is a consequence of the internals of registry hives. We try to delete
 
 Q. Do you accept pull requests?
 A. They are welcome and will be reviewed.
+
+GET IT
+------
+
+Hiveswarming is a standalone executable. You can just download it from the
+Github release pages. The executable should be digitally signed.
+
+As of August 2025, Hiveswarming v1.5 has been made available on WinGet by a
+third-party user contribution (@upintheairsheep).
+You can install this specific version with:
+    winget install Hiveswarming --exact --id HiveSwarming --version 1.5.0.0
+

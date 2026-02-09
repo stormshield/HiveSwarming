@@ -1,4 +1,4 @@
-// (C) Stormshield 2025
+// (C) Stormshield 2026
 // Licensed under the Apache license, version 2.0
 // See LICENSE.txt for details
 
@@ -107,8 +107,12 @@ _Must_inspect_result_ static HRESULT InternalToHkey
         NTSTATUS Status = NtSetValueKey(KeyHandle, &ValueName, 0ul, Value.Type, (PVOID)Value.BinaryValue.data(), static_cast<ULONG>(Value.BinaryValue.size()));
         if (NT_SUCCESS(Status) == FALSE)
         {
-            ReportError(Status, L"Could not set value " + Value.Name + L" of key " + RegKey.Name + L" with NtSetValueKey, trying fallback");
-            goto Cleanup;
+            Result = RegSetKeyValueW(KeyHandle, nullptr, Value.Name.c_str(), Value.Type, (PVOID)Value.BinaryValue.data(), static_cast<ULONG>(Value.BinaryValue.size()));
+            if (FAILED(Result)) {
+                ReportError(HRESULT_FROM_NT(Status), L"Could not set value " + Value.Name + L" of key " + RegKey.Name + L" with NtSetValueKey.");
+                ReportError(Result, L"Could not set value " + Value.Name + L" of key " + RegKey.Name + L" with RegSetKeyValueW as fallback.");
+                goto Cleanup;
+            }
         }
     }
 

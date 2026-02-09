@@ -1,4 +1,7 @@
-Version 1.5 - 
+Version 1.6 - 2026-02-09
+  * Add fallback method when NtSetValueKey fails
+
+Version 1.5 - 2025-04-14
   * Add support for .pol files
   * Extend .reg file format for readability of REG_MULTI_SZ,
     REG_EXPAND_SZ and REG_QWORD values
