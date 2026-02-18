@@ -1,0 +1,36 @@
+# Changelog
+
+## [Version 1.6](https://github.com/stormshield/HiveSwarming/releases/tag/v1.6) (2026-02-09)
+
+* Add fallback method when `NtSetValueKey` fails
+
+## [Version 1.5](https://github.com/stormshield/HiveSwarming/releases/tag/v1.5) (2025-04-14)
+* 
+* Add support for *.pol* files
+* Extend .reg file format for readability of `REG_MULTI_SZ`, `REG_EXPAND_SZ` and `REG_QWORD` values
+* Changed command line syntax to adapt for more formats
+
+## [Version 1.4](https://github.com/stormshield/HiveSwarming/releases/tag/v1.4) (2025-01-12)
+
+* Fix binary data alteration when dealing with some nonconformant registry values
+
+## [Version 1.3](https://github.com/stormshield/HiveSwarming/releases/tag/v1.3) (2023-06-15)
+
+* Narrow desired rights when loading hive
+
+## [Version 1.2](https://github.com/stormshield/HiveSwarming/releases/tag/v1.2) (2022-02-28)
+
+* Support registry symbolic links
+* Accept continuation lines with any amount of leading spaces
+  for values stored as hexadecimal
+* Accept multiple newlines after preamble
+
+## [Version 1.1](https://github.com/stormshield/HiveSwarming/releases/tag/v1.1) (2020-02-11)
+
+* Support newline (`\n`) characters in key names
+* Support newline (`\n`) characters in value names
+* Support newline (`\n`) characters in string value contents
+
+## [Version 1.0](https://github.com/stormshield/HiveSwarming/releases/tag/v1.0) (2020-02-10)
+
+* Initial release
