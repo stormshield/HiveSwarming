@@ -36,15 +36,11 @@ See also [Raymond Chen's explanation](https://devblogs.microsoft.com/oldnewthing
 
 **Any limitations?**
 
-Yes. First, when you load a hive file using the API `RegLoadAppKeyW`, all
-security descriptors for all keys inside the hive should be identical.
-Otherwise it will fail.
-
-Second, if a key name contains a closing bracket followed by a newline
+Yes. First, if a key name contains a closing bracket followed by a newline
 character, your *.reg* file is not parseable. This limitation is also valid for
-standard *.reg* files
+standard *.reg* files.
 
-Third, when converting from *.reg* file to a hive, any key containing a single
+Second, when converting from *.reg* file to a hive, any key containing a single
 value named `SymbolicLinkValue` and of type `REG_LINK` will be recreated as a
 symbolic link. This should be what is expected most of the time.
 

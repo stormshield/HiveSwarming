@@ -1,5 +1,9 @@
 # Changelog
 
+## [Version 1.7](https://github.com/stormshield/HiveSwarming/releases/tag/v1.7) (2026-06-09)
+
+* Add fallback method when `RegLoadAppKeyW` fails
+
 ## [Version 1.6](https://github.com/stormshield/HiveSwarming/releases/tag/v1.6) (2026-02-09)
 
 * Add fallback method when `NtSetValueKey` fails
